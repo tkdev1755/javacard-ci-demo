@@ -1,2 +1,2 @@
 # javacard-ci 
-Project to create a CI/CD pipeline for Javacard Apps
+dddProject to create a CI/CD pipeline for Javacard Ap
