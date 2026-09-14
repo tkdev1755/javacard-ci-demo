@@ -2,7 +2,7 @@ package fr.insa;
 
 import javacard.framework.*;
 
-ublic class HelloWorldApplet extends Applet {
+public class HelloWorldApplet extends Applet {
 
     private static final byte[] HELLO_WORLD = {
         (byte)'H', (byte)'e', (byte)'l', (byte)'l', (byte)'o',
