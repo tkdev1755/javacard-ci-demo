@@ -16,8 +16,9 @@ RUN apt-get update && apt-get install -y \
     pcsc-tools \
     && rm -rf /var/lib/apt/lists/*
 
-# Copier le JCDK (à télécharger manuellement et placer à côté du Dockerfile)
-COPY java_card_kit-2_2_2 /opt/java_card_kit-2_2_2
+# Le JCDK n'est plus copié dans l'image : il sera monté en volume au lancement
+# du conteneur (docker run -v .../java_card_kit-2_2_2:/opt/java_card_kit-2_2_2),
+# pour ne pas embarquer de binaires dans l'image ni dans le repo.
 
 # Copier le script de test
 COPY scripts/run_tests.sh /usr/local/bin/run_tests.sh
