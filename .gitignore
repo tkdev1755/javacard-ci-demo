@@ -11,3 +11,4 @@ build/
 # Temp
 /tmp/
 *.out
+.DS_Store

@@ -1,79 +1,31 @@
-name: Java Card Deploy
-permissions:
-  contents: write
+name: deploy-javacard
+
 on:
   workflow_run:
     workflows: ["Java Card CI"]
-    branches: [main]
-    types: 
-      - completed
+    types: [completed]
+  workflow_dispatch: {}   # garde la possibilité de relancer manuellement au besoin
+
+permissions:
+  contents: read
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: [self-hosted,db2secJavaCard]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install system dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y gcc-multilib libpcsclite1 pcsc-tools wget unzip
-      - name: Extract version from future pom.xml
-        id: get_version
-        shell: bash
-        run: |
-          echo "version='1.0.0'" >> $GITHUB_OUTPUT
-      - name: Setup Java (Temurin JDK 17)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Use JCDK from repository
-        run: |
-          echo "JC_HOME=$PWD/tools/jcdk" >> $GITHUB_ENV
-          echo "PATH=$PWD/tools/jcdk/bin:$PATH" >> $GITHUB_ENV
-
-      - name: Download ECJ
-        run: |
-          mkdir -p lib
-          wget -O lib/ecj.jar https://repo.maven.apache.org/maven2/org/eclipse/jdt/ecj/3.33.0/ecj-3.33.0.jar
-
-      - name: Build CAP
-        run: |
-          chmod +x scripts/build.sh
-          ./scripts/build.sh
-
-      - name: Run tests
-        run: |
-          chmod +x scripts/run_tests.sh
-          ./scripts/run_tests.sh
-      - name: Zip folder
-        run: |
-          zip -r  helloWorldApplet.zip ./build/cap/fr/insa/javacard/*.cap
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-cap
-          path: helloWorldApplet.zip
-
-  release:
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./release_files
-
-      - name: Create GitHub draft release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ needs.build.outputs.version }}
-          name: v${{ needs.build.outputs.version }}
-          draft: true
-          files: ./release_files/**/*
+      - name: Télécharger le .cap de la dernière release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download --repo ${{ github.repository }} --pattern '*.cap' --dir . --clobber
+
+      - name: Repérer le fichier téléchargé
+        id: cap
+        run: echo "file=$(ls *.cap | head -n1)" >> "$GITHUB_OUTPUT"
+
+      - name: Désinstaller l'ancienne version si présente
+        run: gp --uninstall "${{ steps.cap.outputs.file }}" || true
+
+      - name: Installer la nouvelle version sur la JavaCard
+        run: gp --install "${{ steps.cap.outputs.file }}"
